@@ -1,0 +1,7 @@
+cod_operazione,descrizione,costo_operazione
+PRE,Prelievi,2.5
+BON,Bonifici,2.0
+PCC,Pagamenti con carta di credito,0.25
+PCD,Pagamenti con carta di debito,0.25
+PAP,Pagamenti vari da applicazione,1.5
+VER,Versamenti,2.0

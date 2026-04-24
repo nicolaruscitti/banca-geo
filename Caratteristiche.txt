@@ -1,0 +1,63 @@
+Vanilla JavaScript (JS puro), HTML e CSS — nessun framework, nessuna libreria di UI, nessun build step. 
+L'unica  dipendenza esterna è Leaflet 1.9.4 per la mappa interattiva.
+
+ Leaflet è una libreria JavaScript open source per mappe interattive, la più diffusa per applicazioni web. La versione
+  1.9.4 è l'ultima release stabile della serie 1.x.
+
+  ---
+  Cosa fa
+
+  Scarica e assembla riquadri di mappa (tile) da un server esterno e li mostra in un elemento HTML, permettendo di:
+  - navigare (pan/zoom) con mouse e touch
+  - sovrapporre layer di dati (marker, poligoni, linee, popup)
+  - intercettare eventi (click, hover, zoom) su qualsiasi elemento
+
+  ---
+  Perché è diffusa
+
+  - Leggera — ~42 KB minificata+gzip, nessuna dipendenza
+  - API semplice — poche righe per avere una mappa funzionante
+  - Plugin ecosystem — centinaia di plugin della community
+  - Mobile-first — supporto touch nativo
+
+  ---
+  Come funziona tecnicamente
+
+  Il browser scarica tile PNG/WebP (riquadri 256×256 px) dal server CDN e li posiziona in una griglia CSS. Leaflet
+  gestisce quale tile richiedere in base allo zoom e alla posizione, e aggiorna la griglia quando l'utente naviga. I
+  marker e gli overlay sono elementi SVG o <div> posizionati in coordinate geografiche tramite proiezione matematica
+  (Mercatore).
+
+  ---
+  Alternative popolari
+
+  ┌────────────────────┬───────────────────────────────────┐
+  │      Libreria      │               Note                │
+  ├────────────────────┼───────────────────────────────────┤
+  │ MapLibre GL        │ mappe vettoriali, GPU-accelerate  │
+  ├────────────────────┼───────────────────────────────────┤
+  │ OpenLayers         │ più potente, più complessa        │
+  ├────────────────────┼───────────────────────────────────┤
+  │ Google Maps JS API │ commerciale, API key obbligatoria │
+  ├────────────────────┼───────────────────────────────────┤
+  │ Mapbox GL JS       │ ibrido, tier gratuito limitato    │
+  └────────────────────┴───────────────────────────────────┘
+
+  Leaflet rimane la scelta preferita quando si vuole semplicità e leggerezza senza dipendenze commerciali.
+
+
+Leaflet viene caricato via CDN (unpkg) come tag <script> nell'HTML — nessuna installazione locale. L'interazione
+  avviene tramite la sua API JavaScript pubblica:
+
+  - L.map('map', {...}) — crea la mappa nel div #map
+  - L.tileLayer(url, {...}).addTo(map) — aggiunge il layer di tile (CartoDB dark)
+  - L.layerGroup().addTo(map) — gruppo di layer per i marker, svuotato e ridisegnato a ogni renderMarkers()
+  - L.circleMarker([lat, lng], {radius, fillColor, ...}) — marker circolari proporzionali al numero di clienti
+  - L.marker([lat, lng], {icon: L.divIcon({html: '...'})}) — label testuali flottanti sopra i marker
+  - circle.bindPopup(html, opts) — popup al click sul marker
+  - circle.on('click', callback) — event listener sul singolo marker
+  - map.fitBounds(bounds, {padding}) — adatta zoom e centro all'Italia
+  - map.invalidateSize() + map.once('resize', callback) — ricalcola dimensioni dopo il resize del container (es.
+  collapse della chat)
+
+Leaflet è open source (licenza BSD-2-Clause), completamente gratuito anche per uso commerciale.

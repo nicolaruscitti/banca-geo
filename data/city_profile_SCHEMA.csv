@@ -1,0 +1,17 @@
+column,description
+city_id,Identificativo città
+city_name,Nome città
+regione,Macro-regione italiana
+popolazione,Popolazione stimata
+reddito_medio,Reddito medio annuo fittizio
+costo_vita_index,Indice costo della vita (100 = media)
+tasso_occupazione,Tasso di occupazione
+qualita_vita_index,Indice qualità della vita (0-100)
+servizi_sanitari_index,Indice servizi sanitari
+istruzione_index,Indice istruzione
+sicurezza_index,Indice sicurezza
+prezzo_medio_case_mq,Prezzo medio immobili €/mq
+tasso_affitto,Tasso medio di affitto
+attrattivita_immobiliare,Attrattività immobiliare
+digital_infrastructure_index,Indice infrastruttura digitale
+offerta_culturale_index,Indice offerta culturale

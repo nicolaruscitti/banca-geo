@@ -1,0 +1,31 @@
+ Come viene calcolata la correlazione nel file cross-sell
+
+  Il procedimento in parole semplici
+
+  Per ogni cliente della città, il sistema:
+
+  1. Cerca i "profili simili" nell'intero portafoglio di 10.000 clienti, usando tre criteri contemporaneamente:
+    - stesso stato civile (Single / Coppia / Famiglia)
+    - età entro ±5 anni
+    - reddito entro ±20%
+  2. Per ogni prodotto non ancora posseduto dal cliente, conta quanti di quei profili simili lo hanno già.
+  3. Calcola la percentuale: profili simili con il prodotto ÷ totale profili simili
+
+  3. Es.: se il cliente ha 40 profili simili e 14 di loro hanno il Mutuo → correlazione = 14/40 = 35%
+  4. Mostra la % solo se ≥ 25%, altrimenti la cella rimane vuota. Se il cliente possiede già il prodotto, la cella è
+  grigia.
+
+  ---
+  È lo stesso procedimento dell'assistente analitico?
+
+  Sì e no, dipende dal tipo di domanda posta in chat:
+
+  - "Analizza il cliente #42" → procedimento identico: stessi criteri di similarità, stessa soglia (20% nella chat, 25%
+  nel file Excel — l'unica differenza è questa soglia).
+  - "Chi può ricevere proposta di Mutuo?" (cross-sell generico) → procedimento simile ma diverso: invece di profilare
+  ogni cliente individualmente, raggruppa i clienti in bucket demografici (stato + decennio di età + fascia di reddito),
+   e cerca i bucket con penetrazione ≥ 20%. È un'analisi per segmento, non per singolo cliente.
+
+  In sintesi: il file Excel usa la logica cliente-per-cliente (più precisa, più lenta), la chat in modalità cross-sell
+  generica usa la logica a bucket (più rapida, per grandi volumi). Solo la domanda "analizza il cliente #N" usa
+  esattamente lo stesso calcolo del file.

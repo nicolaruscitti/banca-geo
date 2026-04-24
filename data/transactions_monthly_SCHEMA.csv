@@ -1,0 +1,23 @@
+column,description
+customer_id,Identificativo univoco cliente
+anno_mese,Anno-mese (YYYY-MM) della riga aggregata
+regione,Macro-area geografica (distribuzione uniforme)
+stato_mese,"Stato di vita nel mese (Single/Coppia/Famiglia), storicizzato"
+eta_mese,Eta stimata nel mese
+housing_type,Tipo di costo abitativo nel mese (MORTGAGE/RENT/NONE)
+inflow_salary,Entrata principale (stipendio/pensione) stimata
+inflow_bonus,Bonus (tipicamente Dicembre)
+inflow_other,"Altre entrate (rimborsi, extra)"
+inflow_total,Totale entrate del mese
+outflow_housing,Uscite per casa (affitto o rata mutuo)
+outflow_bills,Uscite bollette/utenze
+outflow_groceries,Uscite alimentari
+outflow_transport,Uscite trasporti
+outflow_leisure,Uscite svago/discrezionali
+outflow_insurance,Uscite assicurazioni
+outflow_invest,Versamenti a investimenti (se presenti)
+outflow_other,Altre uscite varie
+outflow_total,Totale uscite del mese
+net_cashflow,Saldo netto (entrate - uscite)
+avg_balance,Saldo medio stimato del conto nel mese
+digital_engagement_score,Indice sintetico 0-100 di engagement digitale

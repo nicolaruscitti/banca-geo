@@ -1,0 +1,177 @@
+● Ho tutti i dati. Ecco l'analisi completa.
+
+  ---
+  1. Come viene calcolata la % di correlazione
+
+  Sono in realtà due motori diversi, con logiche completamente separate.
+
+  ---
+  Motore A — queryCustomer (usato quando scrivi "analizza cliente #42")
+
+  Usa findSimilarProfiles con questi criteri:
+
+  findSimilarProfiles(cust, pool, { age: 5, income: 0.20 })
+
+  Definizione di "profilo simile": tre condizioni tutte obbligatorie:
+  - stato civile identico (Single=Single, Coppia=Coppia, Famiglia=Famiglia — nessuna tolleranza)
+  - |età_candidato − età_target| ≤ 5 anni
+  - reddito_target × 0.80 ≤ reddito_candidato ≤ reddito_target × 1.20 (±20%)
+
+  Formula finale:
+  correlazione = conteggio(simili CHE HANNO il prodotto) / conteggio(tutti i simili)
+  Restituita come float 0–1 (es. 0.31 = 31%).
+
+  Soglia minima: 0.20 (20%). Sotto quella soglia, il prodotto non compare tra le opportunità del cliente.
+
+  ---
+  Motore B — queryCrossSell (usato per la ricerca massiva cross-sell)
+
+  Raggruppa tutti i clienti filtrati in bucket tramite una chiave composta:
+
+  key = stato + '_' + Math.floor(eta/10) + '_' + Math.floor(reddito/15000)
+
+  Questo crea fasce molto più grossolane:
+  - stato: 0/1/2 — identico
+  - decade di età: 40-49→4, 50-59→5, ecc.
+  - fascia reddito da €15k: €0–14.999→0, €15.000–29.999→1, €30.000–44.999→2, ecc.
+
+  Formula finale:
+  correlazione = conteggio(clienti nel bucket CON il prodotto) / conteggio(clienti nel bucket)
+  Già restituita come intero percentuale (es. 33%).
+
+  Due soglie:
+  - Bucket size < 4 clienti → bucket ignorato completamente
+  - correlazione < 20% → nessun candidato estratto da quel bucket
+
+  Nota critica: tutti i clienti dello stesso bucket ricevono identica percentuale. Non è personalizzata per cliente — è
+  una statistica aggregata del gruppo.
+
+  ---
+  2. Quando la % NON viene mostrata
+
+  ┌──────────────────────────────┬──────────────────────────────────────────────┬────────────────────────────────────┐
+  │             Caso             │           Motore A (queryCustomer)           │     Motore B (queryCrossSell)      │
+  ├──────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────┤
+  │ Profili simili trovati = 0   │ corr = 0/0 = 0 → sotto soglia → non mostrato │ bucket size 0 → ignorato           │
+  ├──────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────┤
+  │ Bucket/gruppo troppo piccolo │ nessuna soglia esplicita su n                │ bucket < 4 → saltato               │
+  ├──────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────┤
+  │ % sotto soglia               │ < 20% → non inserito in opps                 │ < 20% → non inserito in cands      │
+  ├──────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────┤
+  │ Cliente ha già il prodotto   │ if(customer.pmask & (1<<pi)) continue        │ if(!(cc.pmask & (1<<p))) — idem    │
+  ├──────────────────────────────┼──────────────────────────────────────────────┼────────────────────────────────────┤
+  │ Cross-sell: rank > 200       │ N/A                                          │ candidates.slice(0,200) — tagliati │
+  └──────────────────────────────┴──────────────────────────────────────────────┴────────────────────────────────────┘
+
+  L'ultimo punto è importante: nel cross-sell massivo vengono restituiti solo i top 200 candidati ordinati per
+  correlazione decrescente. Chi ha correlazione alta ma è al rango 201+ scompare dai risultati.
+
+  ---
+  3. Esempio concreto — Cliente #42, prodotto Investimenti
+
+  Dati cliente:
+  id=42  città=2  età=45  stato=0(Single)  reddito=€27.919  pmask=7 (0b0000111)
+  Prodotti posseduti: Conto Corrente, Carta Debito, Carta Credito
+  Prodotti mancanti:  Mutuo, Investimenti, Ass.Vita, Ass.Casa
+
+  ---
+  Percorso A — "analizza il cliente #42"
+
+  Step 1 — calcola i range di tolleranza:
+  stato = 0 (deve essere uguale)
+  età   = [45−5, 45+5] = [40, 50]
+  reddito = [27.919 × 0.80, 27.919 × 1.20] = [22.335, 33.503]
+
+  Step 2 — scansione di tutti i 10.000 clienti:
+  Il codice esclude c.id === 42 e filtra per le tre condizioni. Risultato:
+  293 profili simili trovati
+
+  Step 3 — calcola correlazione per Investimenti (bit index 4):
+  profili simili che hanno Investimenti: 92
+  correlazione = 92 / 293 = 0.3140 → arrotondato = 31%
+
+  Step 4 — confronto con soglia:
+  31% ≥ 20% → SI, cliente #42 è candidato per Investimenti
+  La scheda mostrerebbe: "Investimenti: correlazione 31% (92/293 profili simili)".
+
+  ---
+  Percorso B — "chi può ricevere proposta Investimenti?" (cross-sell massivo)
+
+  Step 1 — calcola la chiave bucket di #42:
+  stato  = 0
+  decade = floor(45/10) = 4
+  fascia = floor(27.919/15.000) = 1
+
+  chiave bucket = "0_4_1"
+  Questa chiave rappresenta: Single, età 40–49, reddito €15.000–29.999.
+
+  Step 2 — conta il bucket:
+  Clienti nel bucket "0_4_1":        293
+  Di cui con Investimenti:            96
+  correlazione bucket = 96/293 = 33%
+
+  Step 3 — confronto soglie:
+  293 ≥ 4 (size minima)        → OK
+  33% ≥ 20% (THRESH)           → OK
+  cliente #42 non ha Investimenti → OK
+  → #42 è un candidato crosssell con correlazione 33%
+
+  Step 4 — ma viene restituito?
+  Candidati totali per Investimenti (dataset completo): 6.859
+  Posizione di #42 nella lista ordinata:               1.694°
+  Top 200 restituiti:                                  1° – 200°
+
+  → Cliente #42 NON appare nei risultati cross-sell
+    perché viene tagliato da candidates.slice(0, 200)
+
+  ---
+  Perché le percentuali differiscono (31% vs 33%)?
+
+  I due motori usano popolazioni diverse:
+
+  ┌──────────────────┬────────────────────────┬────────────────────────────────────┐
+  │                  │     queryCustomer      │           queryCrossSell           │
+  ├──────────────────┼────────────────────────┼────────────────────────────────────┤
+  │ Range età        │ 40–50 (±5 esatto)      │ 40–49 (decade intera)              │
+  ├──────────────────┼────────────────────────┼────────────────────────────────────┤
+  │ Range reddito    │ €22.335–€33.503 (±20%) │ €15.000–€29.999 (fascia €15k)      │
+  ├──────────────────┼────────────────────────┼────────────────────────────────────┤
+  │ Popolazione      │ 293 clienti            │ 293 clienti (coincidenza numerica) │
+  ├──────────────────┼────────────────────────┼────────────────────────────────────┤
+  │ Con Investimenti │ 92                     │ 96                                 │
+  ├──────────────────┼────────────────────────┼────────────────────────────────────┤
+  │ Correlazione     │ 31%                    │ 33%                                │
+  └──────────────────┴────────────────────────┴────────────────────────────────────┘
+
+  Stessa dimensione per coincidenza, ma insiemi di clienti diversi: il bucket include chi guadagna €17.000 (escluso da
+  ±20%) ma esclude chi guadagna €32.000 (incluso da ±20%).
+
+  ---
+  4. Casi limite e bug potenziali
+
+  Bug 1 — slice(0, 200) con ordinamento instabile
+  Quando migliaia di candidati hanno la stessa correlazione (es. tutti quelli del bucket 0_4_1 hanno correlazione 33%),
+  l'ordinamento finale dipende dall'ordine con cui i bucket vengono processati — che a sua volta dipende dall'ordine
+  delle chiavi nell'oggetto JS. Non è deterministico. Chi compare nelle prime 200 posizioni tra candidati con stessa
+  correlazione è sostanzialmente casuale.
+
+  Bug 2 — La "correlazione" nel cross-sell non è personalizzata
+  Il valore visualizzato nella scheda cliente come "correlazione" è la statistica del suo bucket, non una misura della
+  similarità individuale. Due clienti nello stesso bucket ricevono la stessa %, anche se uno ha 41 anni e reddito
+  €15.500 e l'altro ne ha 49 e guadagna €29.900.
+
+  Bug 3 — I due motori non concordano
+  Un cliente può essere candidato secondo queryCustomer (correlazione 31%) ma non apparire nei risultati di
+  queryCrossSell perché è all'1694° posto. E viceversa: il cross-sell può individuare candidati che queryCustomer non
+  includerebbe, perché usa fasce di reddito più ampie.
+
+  Bug 4 — pearsonCorrelation è definita ma mai usata in questi due motori
+  La funzione è in correlation.js ma né queryCrossSell né queryCustomer la chiamano. Il nome "correlazione"
+  nell'interfaccia è quindi una semplificazione — in realtà si tratta sempre di una frequenza condizionale (P(prodotto |
+   profilo simile)), non di un coefficiente di Pearson.
+
+  Caso limite — cliente con reddito molto basso
+  Se reddito = €8.000 (minimo del dataset), il ±20% dà un range di soli €6.400–€9.600. I profili simili trovati
+  potrebbero essere pochissimi (es. 2–3), rendendo la percentuale statisticamente inaffidabile (es. 1/3 = 33% basato su
+  3 soli casi). Non c'è nessuna soglia minima su n nel motore A — findSimilarProfiles può restituire anche 1 solo
+  profilo simile, e se quel profilo ha il prodotto, la correlazione sarebbe 100%.

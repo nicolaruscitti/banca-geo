@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banca-Geo · Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080d18;--s1:#0f1523;--s2:#161e30;--s3:#1c2740;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --accent:#4f8ef7;--accent2:#22d3c8;
+  --txt:#dde4f0;--muted:#4a5568;--muted2:#64748b;
+  --mono:'DM Mono',monospace;--sora:'Sora',sans-serif;
+}
+body{background:var(--bg);color:var(--txt);font-family:var(--mono);height:100vh;overflow:hidden;position:relative;user-select:none}
+
+/* ── Overlay transizione ── */
+#overlay{position:fixed;inset:0;background:var(--bg);z-index:200;opacity:0;pointer-events:none;transition:opacity .22s ease}
+
+/* ── Scene container ── */
+.scene{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .18s ease}
+.scene.active{opacity:1;pointer-events:all}
+
+/* ── Progress bar ── */
+#prog-wrap{position:fixed;bottom:0;left:0;right:0;z-index:100;padding:6px 0 0;background:linear-gradient(transparent,rgba(8,13,24,.85))}
+#prog-track{height:2px;background:rgba(255,255,255,.07);margin:0 0 8px}
+#prog-fill{height:100%;width:0%;background:var(--accent2);transition:width .1s linear}
+#prog-labels{display:flex;justify-content:space-between;padding:0 16px 8px;gap:4px}
+.prog-dot{flex:1;text-align:center;font-size:8px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;transition:color .3s}
+.prog-dot.active{color:var(--accent2)}
+
+/* ── Grid sfondo mappa ── */
+.map-bg{position:absolute;inset:0;background:#0a0f1e;
+  background-image:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:28px 28px}
+
+/* ── Dot marker ── */
+.dot{position:absolute;border-radius:50%;opacity:0;transform:translate(-50%,-50%) scale(0);transition:opacity .35s ease,transform .35s ease}
+.dot-lbl{position:absolute;font-family:var(--mono);font-size:9px;font-weight:500;color:rgba(255,255,255,.9);transform:translate(-50%,-50%);text-shadow:0 1px 3px rgba(0,0,0,.85);pointer-events:none;opacity:0;transition:opacity .3s ease}
+
+/* ════════════════════════════════════════════════
+   SCENE 0 — Intro
+   ════════════════════════════════════════════════ */
+#s0{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;text-align:center}
+.s0-tag{font-size:10px;color:var(--accent2);letter-spacing:.22em;text-transform:uppercase;opacity:0;transform:translateY(12px);transition:opacity .6s .2s ease,transform .6s .2s ease}
+.s0-title{font-family:var(--sora);font-size:58px;font-weight:600;line-height:1;margin:14px 0 10px;
+  background:linear-gradient(130deg,#4f8ef7 30%,#22d3c8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;transform:translateY(14px);transition:opacity .65s .55s ease,transform .65s .55s ease}
+.s0-sub{font-family:var(--sora);font-size:15px;font-weight:300;color:var(--muted2);
+  opacity:0;transform:translateY(10px);transition:opacity .6s .95s ease,transform .6s .95s ease}
+.s0-stats{display:flex;gap:36px;margin-top:28px;
+  opacity:0;transform:translateY(10px);transition:opacity .6s 1.4s ease,transform .6s 1.4s ease}
+.s0-stat .n{font-family:var(--sora);font-size:30px;font-weight:600;color:var(--accent2)}
+.s0-stat .l{font-size:9px;color:var(--muted2);margin-top:3px;letter-spacing:.1em;text-transform:uppercase}
+#s0.active .s0-tag,.s0.active .s0-title,.s0.active .s0-sub,.s0.active .s0-stats{opacity:1;transform:none}
+#s0.active .s0-tag{opacity:1;transform:none}
+#s0.active .s0-title{opacity:1;transform:none}
+#s0.active .s0-sub{opacity:1;transform:none}
+#s0.active .s0-stats{opacity:1;transform:none}
+
+/* ════════════════════════════════════════════════
+   SCENE 1 — Mappa overview
+   ════════════════════════════════════════════════ */
+#s1{display:grid;grid-template-columns:220px 1fr 280px;height:100%}
+.s1-sidebar{background:var(--s1);border-right:1px solid var(--border);padding:14px 12px;overflow:hidden}
+.s1-sidebar-title{font-family:var(--sora);font-size:13px;font-weight:600;color:var(--txt);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2)}
+.flabel{font-size:8px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.fbar{height:3px;border-radius:2px;background:var(--s3);margin-bottom:3px;overflow:hidden}
+.fbar-fill{height:100%;border-radius:2px}
+.frange{display:flex;justify-content:space-between;font-size:8px;color:var(--muted);margin-bottom:11px}
+.fpills{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:12px}
+.fpill{padding:2px 7px;border-radius:10px;font-size:8px;border:1px solid var(--border2);color:var(--muted2)}
+.fpill.on{border-color:var(--accent2);color:var(--accent2);background:rgba(34,211,200,.07)}
+.s1-map{position:relative;overflow:hidden}
+#map-lbl{position:absolute;top:11px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.08em;white-space:nowrap;z-index:5}
+.s1-right{background:var(--s1);border-left:1px solid var(--border);padding:14px 12px;overflow:hidden}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:14px}
+.kpi-box{background:var(--s2);border-radius:7px;padding:8px 9px}
+.kpi-v{font-family:var(--sora);font-size:20px;font-weight:600}
+.kpi-l{font-size:8px;color:var(--muted2);margin-top:1px}
+.bar-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.bar-name{font-size:8px;color:var(--muted2);width:55px;flex-shrink:0}
+.bar-track{flex:1;height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.bar-inner{height:100%;border-radius:2px}
+.bar-pct{font-size:8px;color:var(--txt);width:26px;text-align:right;font-family:var(--mono)}
+
+/* ════════════════════════════════════════════════
+   SCENE 2 — Esplora città
+   ════════════════════════════════════════════════ */
+#s2{display:grid;grid-template-columns:268px 1fr;height:100%}
+.s2-panel{background:var(--s1);border-right:1px solid var(--border);padding:12px 11px;overflow:hidden;display:flex;flex-direction:column;gap:4px}
+.s2-header{font-size:8px;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.ccard{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.ccard.sel{border-color:rgba(79,142,247,.45);box-shadow:0 0 0 1.5px var(--accent);background:rgba(79,142,247,.04)}
+.ccard.exp{border-color:rgba(79,142,247,.28);background:rgba(79,142,247,.03)}
+.ccard-hd{display:flex;justify-content:space-between;align-items:center}
+.cname{font-size:12px;font-weight:500;color:var(--txt)}
+.ccnt{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.creg{font-size:8px;color:var(--muted2);margin-top:2px}
+.ccard-body{margin-top:9px;overflow:hidden}
+.stbar{display:flex;height:4px;border-radius:2px;overflow:hidden;gap:1px;margin-bottom:5px}
+.stseg{border-radius:1px}
+.stleg{display:flex;gap:9px;font-size:7px;margin-bottom:8px}
+.ppwrap{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
+.pp{padding:2px 6px;border-radius:3px;font-size:7px;font-family:var(--mono)}
+.vedi{width:100%;padding:5px;font-family:var(--mono);font-size:9px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);color:var(--accent);border-radius:5px;cursor:default;text-align:center}
+.s2-map{position:relative;overflow:hidden}
+
+/* ════════════════════════════════════════════════
+   SCENE 3 — Chat cross-sell
+   ════════════════════════════════════════════════ */
+#s3{display:grid;grid-template-columns:1fr 310px;height:100%}
+.s3-map{position:relative;overflow:hidden}
+.s3-chat{background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.chat-hd{padding:11px 13px;border-bottom:1px solid var(--border);font-size:11px;font-weight:500;color:var(--txt);display:flex;align-items:center;gap:7px}
+.chat-hd-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0}
+.chat-msgs{flex:1;padding:11px 12px;display:flex;flex-direction:column;gap:9px;overflow:hidden}
+.msg-u{align-self:flex-end;max-width:88%}
+.msg-a{align-self:flex-start;max-width:88%}
+.msg-lbl{font-size:7px;color:var(--muted2);letter-spacing:.07em;margin-bottom:3px}
+.msg-lbl-r{text-align:right}
+.bubble-u{background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.25);border-radius:9px 9px 3px 9px;padding:7px 10px;font-size:10px;color:var(--txt);line-height:1.4}
+.bubble-a{background:var(--s2);border:1px solid var(--border2);border-radius:9px 9px 9px 3px;padding:7px 10px;font-size:10px;color:var(--txt);line-height:1.5}
+.chat-inp-wrap{padding:9px 11px;border-top:1px solid var(--border)}
+.inp-fake{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:10px;color:var(--txt)}
+.cursor{display:inline-block;width:1.5px;height:10px;background:var(--accent2);margin-left:1px;animation:cblink .7s infinite}
+@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ════════════════════════════════════════════════
+   SCENE 4 — Revenue Waterfall
+   ════════════════════════════════════════════════ */
+#s4{display:grid;grid-template-columns:1fr 290px;height:100%}
+.s4-map{position:relative;overflow:hidden}
+.s4-panel{background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.panel-hd{padding:10px 12px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.14)}
+.panel-type{font-size:8px;letter-spacing:.1em;text-transform:uppercase;font-family:var(--mono);margin-bottom:2px}
+.panel-sub{font-size:8px;color:var(--muted2);font-family:var(--mono)}
+.panel-summ{padding:8px 12px;border-bottom:1px solid var(--border)}
+.panel-rows{flex:1;overflow:hidden}
+.prow{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);opacity:0;transform:translateX(10px);transition:opacity .35s ease,transform .35s ease}
+.prow.vis{opacity:1;transform:none}
+.prow-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.prow-city{font-size:11px;color:var(--txt)}
+.prow-val{font-family:var(--mono);font-size:11px;font-weight:500}
+.prow-bar-track{height:2px;background:var(--s3);border-radius:1px;overflow:hidden;margin-bottom:3px}
+.prow-bar{height:100%;border-radius:1px;width:0%;transition:width .75s ease .1s}
+.prow-sub{display:flex;justify-content:space-between;font-size:7px;color:var(--muted2);font-family:var(--mono)}
+
+/* ════════════════════════════════════════════════
+   SCENE 5 — Churn risk
+   ════════════════════════════════════════════════ */
+#s5{display:grid;grid-template-columns:1fr 290px;height:100%}
+.s5-map{position:relative;overflow:hidden}
+.s5-panel{background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.risk-badge{padding:2px 6px;border-radius:9px;font-family:var(--mono);font-size:8px;font-weight:500}
+.risk-hi{background:rgba(251,113,133,.12);border:1px solid #fb7185;color:#fb7185}
+.risk-md{background:rgba(249,115,22,.12);border:1px solid #f97316;color:#f97316}
+.distbar{display:flex;height:5px;border-radius:3px;overflow:hidden;gap:1px;margin:6px 0 4px}
+.distleg{display:flex;gap:10px;font-size:7px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<div id="overlay"></div>
+
+<!-- ══ SCENE 0 — Intro ══ -->
+<div class="scene" id="s0">
+  <div class="s0-tag">GenAI Ciclo 5 · Banca-Geo</div>
+  <div class="s0-title">Banca-Geo</div>
+  <div class="s0-sub">Dashboard Geospaziale Clientela Bancaria</div>
+  <div class="s0-stats">
+    <div class="s0-stat"><div class="n">10.000</div><div class="l">Clienti</div></div>
+    <div class="s0-stat"><div class="n">30</div><div class="l">Città</div></div>
+    <div class="s0-stat"><div class="n">7</div><div class="l">Prodotti</div></div>
+    <div class="s0-stat"><div class="n">AI</div><div class="l">Assistente</div></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 1 — Mappa overview ══ -->
+<div class="scene" id="s1">
+  <div class="s1-sidebar">
+    <div class="s1-sidebar-title"><div class="logo-dot"></div>Banca-Geo</div>
+    <div class="flabel">Età</div>
+    <div class="fbar"><div class="fbar-fill" style="width:100%;background:var(--accent)"></div></div>
+    <div class="frange"><span>18 a</span><span>79 a</span></div>
+    <div class="flabel">Reddito annuo</div>
+    <div class="fbar"><div class="fbar-fill" style="width:100%;background:var(--accent2)"></div></div>
+    <div class="frange"><span>€8k</span><span>€77k</span></div>
+    <div class="flabel">Stato familiare</div>
+    <div class="fpills">
+      <div class="fpill on" style="border-color:#4f8ef7;color:#4f8ef7;background:rgba(79,142,247,.07)">Single</div>
+      <div class="fpill on" style="border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,.07)">Coppia</div>
+      <div class="fpill on" style="border-color:#34d399;color:#34d399;background:rgba(52,211,153,.07)">Famiglia</div>
+    </div>
+    <div class="flabel">Prodotti</div>
+    <div class="fpills">
+      <div class="fpill">C/C</div><div class="fpill">Deb.</div>
+      <div class="fpill">Cred.</div><div class="fpill">Mutuo</div>
+      <div class="fpill">Inv.</div><div class="fpill">Vita</div><div class="fpill">Casa</div>
+    </div>
+  </div>
+  <div class="s1-map" id="map1"><div class="map-bg"></div><div id="map-lbl">30 città · 10.000 clienti</div></div>
+  <div class="s1-right">
+    <div class="flabel" style="margin-bottom:9px">Statistiche globali</div>
+    <div class="kpi-grid">
+      <div class="kpi-box"><div class="kpi-v" style="color:var(--accent2)">10.000</div><div class="kpi-l">Clienti totali</div></div>
+      <div class="kpi-box"><div class="kpi-v" style="color:var(--accent)">30</div><div class="kpi-l">Città attive</div></div>
+      <div class="kpi-box"><div class="kpi-v" style="color:#34d399">€38k</div><div class="kpi-l">Reddito medio</div></div>
+      <div class="kpi-box"><div class="kpi-v" style="color:#fbbf24">44 a</div><div class="kpi-l">Età media</div></div>
+    </div>
+    <div class="flabel" style="margin-bottom:9px">Penetrazione prodotti</div>
+    <div class="bar-row"><span class="bar-name">C/C</span><div class="bar-track"><div class="bar-inner" style="width:89%;background:var(--accent)"></div></div><span class="bar-pct">89%</span></div>
+    <div class="bar-row"><span class="bar-name">Carta Deb.</span><div class="bar-track"><div class="bar-inner" style="width:76%;background:#a78bfa"></div></div><span class="bar-pct">76%</span></div>
+    <div class="bar-row"><span class="bar-name">Carta Cred.</span><div class="bar-track"><div class="bar-inner" style="width:61%;background:var(--accent2)"></div></div><span class="bar-pct">61%</span></div>
+    <div class="bar-row"><span class="bar-name">Investim.</span><div class="bar-track"><div class="bar-inner" style="width:42%;background:#34d399"></div></div><span class="bar-pct">42%</span></div>
+    <div class="bar-row"><span class="bar-name">Mutuo</span><div class="bar-track"><div class="bar-inner" style="width:31%;background:#fbbf24"></div></div><span class="bar-pct">31%</span></div>
+    <div class="bar-row"><span class="bar-name">Ass. Vita</span><div class="bar-track"><div class="bar-inner" style="width:28%;background:#fb7185"></div></div><span class="bar-pct">28%</span></div>
+    <div class="bar-row"><span class="bar-name">Ass. Casa</span><div class="bar-track"><div class="bar-inner" style="width:22%;background:#f97316"></div></div><span class="bar-pct">22%</span></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 2 — Esplora città ══ -->
+<div class="scene" id="s2">
+  <div class="s2-panel">
+    <div class="s2-header">Città · 10.000 clienti</div>
+    <div class="ccard exp sel">
+      <div class="ccard-hd"><div><div class="cname">Milano</div><div class="creg">Nord Ovest</div></div><div class="ccnt">847</div></div>
+      <div class="ccard-body">
+        <div class="stbar">
+          <div class="stseg" style="flex:320;background:#4f8ef7"></div>
+          <div class="stseg" style="flex:280;background:#a78bfa"></div>
+          <div class="stseg" style="flex:247;background:#34d399"></div>
+        </div>
+        <div class="stleg">
+          <span style="color:#4f8ef7">● 38% Single</span>
+          <span style="color:#a78bfa">● 33% Coppia</span>
+          <span style="color:#34d399">● 29% Famiglia</span>
+        </div>
+        <div class="ppwrap">
+          <span class="pp" style="background:rgba(79,142,247,.18);color:#4f8ef7">C/C 91%</span>
+          <span class="pp" style="background:rgba(167,139,250,.18);color:#a78bfa">Deb 79%</span>
+          <span class="pp" style="background:rgba(34,211,200,.18);color:#22d3c8">Inv 58%</span>
+          <span class="pp" style="background:rgba(251,191,36,.18);color:#fbbf24">Mut 34%</span>
+          <span class="pp" style="background:rgba(249,115,22,.12);color:#f97316">Vita 31%</span>
+          <span class="pp" style="background:rgba(251,113,133,.12);color:#fb7185">Casa 26%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
+          <div style="background:var(--s3);border-radius:5px;padding:5px 7px"><div style="font-family:var(--mono);font-size:10px;color:var(--accent2)">€42k</div><div style="font-size:7px;color:var(--muted)">Reddito medio</div></div>
+          <div style="background:var(--s3);border-radius:5px;padding:5px 7px"><div style="font-family:var(--mono);font-size:10px;color:var(--accent)">43 a</div><div style="font-size:7px;color:var(--muted)">Età media</div></div>
+        </div>
+        <div class="vedi">Vedi 847 clienti →</div>
+      </div>
+    </div>
+    <div class="ccard" style="opacity:.72"><div class="ccard-hd"><div><div class="cname">Roma</div><div class="creg">Centro</div></div><div class="ccnt">763</div></div></div>
+    <div class="ccard" style="opacity:.55"><div class="ccard-hd"><div><div class="cname">Napoli</div><div class="creg">Sud</div></div><div class="ccnt">518</div></div></div>
+    <div class="ccard" style="opacity:.38"><div class="ccard-hd"><div><div class="cname">Torino</div><div class="creg">Nord Ovest</div></div><div class="ccnt">492</div></div></div>
+  </div>
+  <div class="s2-map" id="map2"><div class="map-bg"></div></div>
+</div>
+
+<!-- ══ SCENE 3 — Chat cross-sell ══ -->
+<div class="scene" id="s3">
+  <div class="s3-map" id="map3"><div class="map-bg"></div></div>
+  <div class="s3-chat">
+    <div class="chat-hd"><div class="chat-hd-dot"></div>Assistente Analitico</div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="msg-a">
+        <div class="msg-lbl">assistente</div>
+        <div class="bubble-a">Ciao! Analizzo <strong>10.000 clienti</strong> su 30 città. Chiedimi cross-sell, proiezioni, gap prodotti, churn e tanto altro.</div>
+      </div>
+    </div>
+    <div class="chat-inp-wrap">
+      <div class="inp-fake"><span id="t-text"></span><span class="cursor"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCENE 4 — Revenue Waterfall ══ -->
+<div class="scene" id="s4">
+  <div class="s4-map" id="map4"><div class="map-bg"></div></div>
+  <div class="s4-panel">
+    <div class="panel-hd">
+      <div class="panel-type" style="color:#22d3c8">◈ Revenue Waterfall</div>
+      <div class="panel-sub">Gap totale: €412k/mese · catturati: €1.2M/mese</div>
+    </div>
+    <div class="panel-summ" style="background:rgba(34,211,200,.04);padding:7px 12px">
+      <div style="font-size:9px;color:var(--txt);font-family:var(--mono);margin-bottom:2px">Prodotti eleggibili non ancora posseduti</div>
+      <div style="font-size:7px;color:var(--muted2);font-family:var(--mono)">Clicca una città per il dettaglio prodotto per prodotto</div>
+    </div>
+    <div class="panel-rows" id="wf-rows"></div>
+  </div>
+</div>
+
+<!-- ══ SCENE 5 — Churn risk ══ -->
+<div class="scene" id="s5">
+  <div class="s5-map" id="map5"><div class="map-bg"></div></div>
+  <div class="s5-panel">
+    <div class="panel-hd">
+      <div class="panel-type" style="color:#fb7185">⚠ Rischio Abbandono</div>
+      <div class="panel-sub">1.247 ad alto rischio · score medio 48/100</div>
+    </div>
+    <div class="panel-summ" style="background:rgba(251,113,133,.04);padding:7px 12px">
+      <div style="font-size:9px;color:var(--txt);font-family:var(--mono);margin-bottom:2px">Score 0–100: profondità prodotti, status, storico, reddito</div>
+      <div style="font-size:7px;color:var(--muted2);font-family:var(--mono)">Clicca una città per distribuzione e top clienti a rischio</div>
+    </div>
+    <div class="panel-rows" id="ch-rows"></div>
+  </div>
+</div>
+
+<!-- ── Progress bar ── -->
+<div id="prog-wrap">
+  <div id="prog-track"><div id="prog-fill"></div></div>
+  <div id="prog-labels">
+    <div class="prog-dot" id="pl0">Intro</div>
+    <div class="prog-dot" id="pl1">Mappa</div>
+    <div class="prog-dot" id="pl2">Città</div>
+    <div class="prog-dot" id="pl3">Chat AI</div>
+    <div class="prog-dot" id="pl4">Waterfall</div>
+    <div class="prog-dot" id="pl5">Churn</div>
+  </div>
+</div>
+
+<script>
+// ── Città con coordinate approssimate per mappa SVG ──────────────────
+// Bounding box: lat 35.5–47.5 / lng 6.5–18.5
+function pct(lat,lng){ return { x:(lng-6.5)/12*100, y:(47.5-lat)/12*100 }; }
+
+const CITIES=[
+  {name:'Milano',   lat:45.47,lng:9.19,  cnt:847,color:'#4f8ef7', r:21},
+  {name:'Torino',   lat:45.07,lng:7.69,  cnt:492,color:'#4f8ef7', r:16},
+  {name:'Genova',   lat:44.41,lng:8.95,  cnt:341,color:'#4f8ef7', r:13},
+  {name:'Venezia',  lat:45.44,lng:12.32, cnt:389,color:'#a78bfa', r:13},
+  {name:'Verona',   lat:45.44,lng:10.99, cnt:312,color:'#a78bfa', r:12},
+  {name:'Bologna',  lat:44.49,lng:11.34, cnt:358,color:'#a78bfa', r:13},
+  {name:'Firenze',  lat:43.77,lng:11.26, cnt:421,color:'#34d399', r:15},
+  {name:'Roma',     lat:41.90,lng:12.50, cnt:763,color:'#34d399', r:20},
+  {name:'Napoli',   lat:40.85,lng:14.27, cnt:518,color:'#fbbf24', r:17},
+  {name:'Bari',     lat:41.12,lng:16.87, cnt:287,color:'#fbbf24', r:11},
+  {name:'Palermo',  lat:38.12,lng:13.36, cnt:312,color:'#fb7185', r:12},
+  {name:'Catania',  lat:37.51,lng:15.08, cnt:241,color:'#fb7185', r:10},
+  {name:'Cagliari', lat:39.22,lng:9.12,  cnt:198,color:'#fb7185', r:9},
+  {name:'Reggio C.',lat:38.11,lng:15.66, cnt:176,color:'#fbbf24', r:9},
+  {name:'Trieste',  lat:45.65,lng:13.78, cnt:198,color:'#a78bfa', r:9},
+  {name:'Perugia',  lat:43.11,lng:12.39, cnt:163,color:'#34d399', r:8},
+  {name:'Ancona',   lat:43.62,lng:13.51, cnt:189,color:'#34d399', r:9},
+  {name:'Pescara',  lat:42.46,lng:14.21, cnt:172,color:'#fbbf24', r:8},
+  {name:'Salerno',  lat:40.68,lng:14.76, cnt:204,color:'#fbbf24', r:9},
+  {name:'Potenza',  lat:40.64,lng:15.80, cnt:143,color:'#fbbf24', r:8},
+];
+
+function spawnDots(containerId, colorFn, opacityFn, extraFn){
+  const c=document.getElementById(containerId);
+  if(!c) return;
+  const W=c.clientWidth, H=c.clientHeight;
+  CITIES.forEach((city,i)=>{
+    const p=pct(city.lat,city.lng);
+    const x=p.x/100*W, y=p.y/100*H;
+    const color=colorFn?colorFn(city,i):city.color;
+    const opacity=opacityFn?opacityFn(city,i):0.68;
+    const r=city.r;
+
+    const dot=document.createElement('div');
+    dot.className='dot';
+    dot.style.cssText=`left:${x}px;top:${y}px;width:${r*2}px;height:${r*2}px;background:${color};`;
+    if(extraFn) extraFn(dot,city,i);
+    c.appendChild(dot);
+
+    const lbl=document.createElement('div');
+    lbl.className='dot-lbl';
+    const cnt=city.cnt>=1000?(city.cnt/1000).toFixed(1)+'k':city.cnt;
+    lbl.style.cssText=`left:${x}px;top:${y}px;`;
+    lbl.textContent=cnt;
+    c.appendChild(lbl);
+
+    setTimeout(()=>{
+      dot.style.opacity=String(opacity);
+      dot.style.transform='translate(-50%,-50%) scale(1)';
+      setTimeout(()=>{ lbl.style.opacity='1'; }, 160);
+    }, 80+i*75);
+  });
+}
+
+// ── Waterfall data ───────────────────────────────────────────────────
+const WF=[
+  {city:'Milano',  reg:'Nord Ovest', gap:'€48k',rate:'71%',bar:100,color:'#22d3c8'},
+  {city:'Roma',    reg:'Centro',     gap:'€41k',rate:'68%',bar:85, color:'#22d3c8'},
+  {city:'Napoli',  reg:'Sud',        gap:'€35k',rate:'62%',bar:73, color:'#22d3c8'},
+  {city:'Torino',  reg:'Nord Ovest', gap:'€28k',rate:'74%',bar:58, color:'#22d3c8'},
+  {city:'Firenze', reg:'Centro',     gap:'€22k',rate:'70%',bar:46, color:'#22d3c8'},
+  {city:'Bologna', reg:'Nord Est',   gap:'€19k',rate:'73%',bar:40, color:'#22d3c8'},
+];
+const CH=[
+  {city:'Napoli',   reg:'Sud',        hi:87,score:72,bar:100,color:'#fb7185'},
+  {city:'Palermo',  reg:'Isole',      hi:64,score:68,bar:74, color:'#fb7185'},
+  {city:'Bari',     reg:'Sud',        hi:58,score:63,bar:67, color:'#f97316'},
+  {city:'Catania',  reg:'Isole',      hi:51,score:61,bar:59, color:'#f97316'},
+  {city:'Roma',     reg:'Centro',     hi:43,score:55,bar:49, color:'#fbbf24'},
+  {city:'Reggio C.',reg:'Sud',        hi:38,score:52,bar:44, color:'#fbbf24'},
+];
+const CHURN_COLORS=['#f97316','#fb7185','#fb7185','#fbbf24','#f97316','#fb7185',
+                    '#fb7185','#f97316','#fbbf24','#fbbf24','#fb7185','#fb7185',
+                    '#fbbf24','#f97316','#f97316','#fbbf24','#f97316','#fbbf24','#f97316','#fbbf24'];
+
+// ── Chat typing ──────────────────────────────────────────────────────
+let typingInterval=null;
+function startTyping(text,callback){
+  const el=document.getElementById('t-text');
+  if(!el) return;
+  let i=0;
+  typingInterval=setInterval(()=>{
+    el.textContent=text.slice(0,++i);
+    if(i>=text.length){ clearInterval(typingInterval); if(callback) callback(); }
+  },55);
+}
+function addMsg(html,isUser){
+  const wrap=document.getElementById('chat-msgs');
+  if(!wrap) return;
+  const d=document.createElement('div');
+  d.className=isUser?'msg-u':'msg-a';
+  d.style.cssText='opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease';
+  d.innerHTML=(isUser
+    ?'<div class="msg-lbl msg-lbl-r">tu</div><div class="bubble-u">'+html+'</div>'
+    :'<div class="msg-lbl">assistente</div><div class="bubble-a">'+html+'</div>');
+  wrap.appendChild(d);
+  wrap.scrollTop=9999;
+  requestAnimationFrame(()=>{ d.style.opacity='1'; d.style.transform='none'; });
+}
+
+// ── Scene timings (ms) — totale 30s ─────────────────────────────────
+const DURATIONS=[4000,5000,5000,6000,5000,5000];
+const IDS=['s0','s1','s2','s3','s4','s5'];
+let currentScene=-1, startT=Date.now();
+const TOTAL_MS=30000;
+
+function activateScene(idx){
+  if(idx===currentScene) return;
+  IDS.forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('active',i===idx);
+  });
+  document.querySelectorAll('.prog-dot').forEach((el,i)=>{
+    el.classList.toggle('active',i===idx);
+  });
+  currentScene=idx;
+  handleSceneContent(idx);
+}
+
+function handleSceneContent(idx){
+  if(idx===1){
+    // Mappa overview con marker colorati per regione
+    spawnDots('map1',c=>c.color,()=>0.68);
+  }
+  if(idx===2){
+    // Mappa con Milano evidenziata
+    spawnDots('map2',
+      (c)=>c.name==='Milano'?'#ffffff':c.color,
+      (c)=>c.name==='Milano'?0.95:0.5,
+      (dot,c)=>{ if(c.name==='Milano'){ dot.style.cssText+=';border:2.5px solid #22d3c8;box-shadow:0 0 14px rgba(34,211,200,.45)'; } }
+    );
+  }
+  if(idx===3){
+    // Mappa con marker viola (crosssell mode)
+    setTimeout(()=>{
+      spawnDots('map3',
+        (c,i)=>c.name==='Milano'?'#a78bfa':'rgba(167,139,250,0.25)',
+        (c)=>c.name==='Milano'?0.85:0.6
+      );
+    },2800);
+    // Typing + risposta
+    setTimeout(()=>{
+      const query='Cross-sell Mutuo a Milano';
+      startTyping(query,()=>{
+        setTimeout(()=>{
+          document.getElementById('t-text').textContent='';
+          addMsg(query,true);
+          setTimeout(()=>{
+            addMsg('<strong style="color:#a78bfa">312 candidati</strong> per <strong>Mutuo</strong> a Milano.<br><span style="font-size:9px;color:var(--muted2)">Coppia/Famiglia · età 30–55 · reddito medio €44k · corr. 68%</span>',false);
+          },900);
+        },300);
+      });
+    },800);
+  }
+  if(idx===4){
+    // Mappa waterfall cyan
+    spawnDots('map4',
+      ()=>'#22d3c8',
+      (c)=>0.6+(c.r/21)*0.3,
+      (dot,c,i)=>{
+        // Label gap sopra il marker
+        const gaps=['€48k','€28k','€14k','€35k','€18k','€22k','€41k','€19k','€8k','€6k','€5k','€4k','€3k','€3k','€4k','€6k','€7k','€5k','€9k','€4k'];
+        setTimeout(()=>{
+          const p=pct(c.lat,c.lng);
+          const cont=document.getElementById('map4');
+          if(!cont) return;
+          const W=cont.clientWidth, H=cont.clientHeight;
+          const x=p.x/100*W, y=p.y/100*H;
+          const gl=document.createElement('div');
+          gl.style.cssText=`position:absolute;left:${x}px;top:${y-(c.r+10)}px;font-family:'DM Mono',monospace;font-size:8px;font-weight:500;color:rgba(255,255,255,.9);transform:translateX(-50%);white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;transition:opacity .3s ease`;
+          gl.textContent=gaps[i]||'€4k';
+          cont.appendChild(gl);
+          setTimeout(()=>{ gl.style.opacity='1'; },200);
+        },80+i*75+300);
+      }
+    );
+    // Panel rows
+    const rows=document.getElementById('wf-rows');
+    WF.forEach((d,i)=>{
+      setTimeout(()=>{
+        const row=document.createElement('div');
+        row.className='prow';
+        row.innerHTML=`
+          <div class="prow-hd">
+            <span class="prow-city">${d.city}</span>
+            <span class="prow-val" style="color:#22d3c8">${d.gap}/mese</span>
+          </div>
+          <div class="prow-bar-track"><div class="prow-bar" style="background:#22d3c8" data-w="${d.bar}"></div></div>
+          <div class="prow-sub"><span>${d.reg}</span><span>catturato ${d.rate}</span></div>`;
+        rows.appendChild(row);
+        requestAnimationFrame(()=>{ row.classList.add('vis'); });
+        setTimeout(()=>{ const b=row.querySelector('.prow-bar'); if(b) b.style.width=d.bar+'%'; },200);
+      },350+i*160);
+    });
+  }
+  if(idx===5){
+    // Mappa churn colorata
+    spawnDots('map5',
+      (c,i)=>CHURN_COLORS[i]||'#fbbf24',
+      ()=>0.72
+    );
+    // Panel rows
+    const rows=document.getElementById('ch-rows');
+    CH.forEach((d,i)=>{
+      setTimeout(()=>{
+        const lowW=100-d.bar;
+        const medW=Math.round(d.bar*0.4);
+        const hiW=d.bar-medW;
+        const row=document.createElement('div');
+        row.className='prow';
+        row.innerHTML=`
+          <div class="prow-hd">
+            <span class="prow-city">${d.city}</span>
+            <span class="risk-badge risk-hi">${d.hi} alto</span>
+          </div>
+          <div class="distbar">
+            <div style="flex:${d.hi};background:#fb7185;border-radius:2px"></div>
+            <div style="flex:${Math.round(d.hi*0.6)};background:#f97316;border-radius:2px"></div>
+            <div style="flex:${Math.round(d.hi*0.8)};background:#fbbf24;border-radius:2px"></div>
+          </div>
+          <div class="prow-sub"><span>${d.reg} · score ${d.score}/100</span><span>${d.hi} alto · ${Math.round(d.hi*0.6)} medio</span></div>`;
+        rows.appendChild(row);
+        requestAnimationFrame(()=>{ row.classList.add('vis'); });
+      },350+i*160);
+    });
+  }
+}
+
+// ── Avvio e timing ───────────────────────────────────────────────────
+(function bootstrap(){
+  activateScene(0);
+
+  let elapsed=0;
+  DURATIONS.forEach((dur,i)=>{
+    if(i===0){ elapsed+=dur; return; }
+    const t=elapsed;
+    setTimeout(()=>{
+      const ov=document.getElementById('overlay');
+      ov.style.opacity='1';
+      setTimeout(()=>{ activateScene(i); ov.style.opacity='0'; },220);
+    },t);
+    elapsed+=dur;
+  });
+})();
+
+// ── Progress bar ─────────────────────────────────────────────────────
+(function prog(){
+  const fill=document.getElementById('prog-fill');
+  function tick(){
+    const elapsed=Math.min(Date.now()-startT,TOTAL_MS);
+    fill.style.width=(elapsed/TOTAL_MS*100)+'%';
+    if(elapsed<TOTAL_MS) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
