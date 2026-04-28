@@ -1,7 +1,7 @@
 # CLAUDE.md — banca-geo dashboard
 
-Dashboard geospaziale clienti bancari italiani. Versione corrente: **`html/banca-geo_33.html`**.
-**Versioning:** ogni modifica produce `banca-geo_N+1.html`. Non sovrascrivere versioni precedenti.
+Dashboard geospaziale clienti bancari italiani. Versione corrente: **`html/banca-geo.html`**.
+**Versioning:** ogni modifica aggiorna `html/banca-geo.html` (file unico, non versionato).
 Dipendenze esterne: Leaflet 1.9.4, Google Fonts (DM Mono / Instrument Serif / Sora), CartoDB tiles dark (no API key).
 
 ---
