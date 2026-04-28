@@ -1,102 +1,189 @@
-# banca-geo
+# Banca Geo
 
-Dashboard geospaziale di analisi clienti bancari italiani.
+Dashboard geospaziale per l'analisi del portafoglio clienti di una banca italiana.  
+Visualizza 10.000 clienti distribuiti su 30 città, con filtri interattivi, analisi AI in linguaggio naturale, gestione campagne e export report.
 
-**File corrente:** `html/banca-geo_10.html`
+**Apri l'app:** [nicolaruscitti.github.io/banca-geo/html/banca-geo.html](https://nicolaruscitti.github.io/banca-geo/html/banca-geo.html)
 
 ---
 
 ## Requisiti
 
 - Browser moderno (Chrome, Firefox, Edge, Safari)
-- Connessione internet (mappa e font caricati da CDN)
-- Nessuna installazione, nessun server, nessuna API key
-
-**Come aprire:** doppio click su `html/banca-geo_10.html`
+- Connessione internet (mappa, font e Leaflet caricati da CDN)
+- L'app deve essere servita via HTTP — non funziona aprendola come file locale (`file://`)
 
 ---
 
-## Cosa fa
+## Come aprire in locale
 
-### Mappa Italia
+```bash
+# Con Python (dalla cartella radice del progetto)
+python -m http.server 8000
+# poi apri: http://localhost:8000/html/banca-geo.html
+```
 
-30 città rappresentate con marker circolari proporzionali al numero di clienti filtrati. Il colore indica la macroregione. Click su un marker → seleziona la città e apre la sua card nella lista a destra. La mappa non apre mai direttamente la vista clienti.
+In alternativa usa l'estensione **Live Server** di VS Code.
 
-### Filtri sidebar (colonna sinistra)
+---
 
+## Struttura dell'interfaccia
+
+L'app è divisa in tre colonne fisse:
+
+```
+┌─────────────┬──────────────────────┬──────────────┐
+│  Sidebar    │      Mappa Italia    │  Pannello    │
+│  (256px)    │                      │  (340px)     │
+│             │   ┌──────────────┐   │              │
+│  Filtri     │   │   Chat AI    │   │  Città /     │
+│  Campagne   │   └──────────────┘   │  Clienti     │
+│  Report     │                      │              │
+└─────────────┴──────────────────────┴──────────────┘
+```
+
+---
+
+## Funzionalità
+
+### Mappa
+30 città rappresentate con marker circolari proporzionali al numero di clienti filtrati. Il colore identifica la macroregione:
+
+| Colore | Macroregione |
+|--------|-------------|
+| Blu `#4f8ef7` | Nord Ovest |
+| Viola `#a78bfa` | Nord Est |
+| Verde `#34d399` | Centro |
+| Giallo `#fbbf24` | Sud |
+| Rosa `#fb7185` | Isole |
+
+- **Hover** su un marker → mostra il nome della città
+- **Click** su un marker → seleziona la città ed espande la sua scheda nel pannello destro
+- **Click su area vuota** → deseleziona
+
+### Filtri (sidebar sinistra)
 | Filtro | Tipo | Comportamento |
-|---|---|---|
-| Età | Doppio range slider 18–79 | Min non supera Max−1 |
-| Reddito | Doppio range slider €8k–€77k (step €500) | Min non supera Max−500 |
-| Stato civile | Pill toggle (Single / Coppia / Famiglia) | Più valori = OR |
-| Prodotti | Pill toggle (7 prodotti) | Più valori = AND (cliente deve avere tutti) |
+|--------|------|---------------|
+| Età | Doppio slider 18–79 anni | Min non supera Max−1 |
+| Reddito annuo | Doppio slider €8k–€77k (step €500) | Min non supera Max−500 |
+| Stato civile | Pill toggle: Single / Coppia / Famiglia | Più valori = OR |
+| Prodotti | Pill toggle: C/C, Deb, Cred, Mutuo, Inv, Ass.V, Ass.C | Più valori = AND |
 
-Il bottone "↺ reset filtri" appare solo quando almeno un filtro è attivo. Ogni modifica ricalcola istantaneamente aggregati e marker.
+Il pulsante **↺ reset filtri** appare solo quando almeno un filtro è attivo. Ogni modifica aggiorna istantaneamente mappa e lista.
 
-### Lista città (colonna destra — vista default)
+### Pannello risultati (colonna destra)
 
-- 4 KPI globali: totale clienti, numero città attive, reddito medio, età media
+**Vista città** (default):
+- 4 KPI globali: clienti totali, città attive, reddito medio, età media
 - Tab per macroregione (Tutte / Nord Ovest / Nord Est / Centro / Sud / Isole)
 - Ricerca per nome città
-- Ordinamento per: Clienti · Reddito · Età · Q.Vita · Digital (click = desc, secondo click = asc)
-- Card per ogni città con rank, barra proporzionale e 4 metriche
+- Ordinamento per: Clienti · Reddito · Età · Q.Vita · Digital
+- Card per ogni città con rank, barra proporzionale e metriche
 
-**Card espansa** (click sulla card o sul marker): mostra barra stato civile, percentuali, heatmap penetrazione prodotti (7 pill), metriche extra, bottone **"Vedi N clienti →"**.
+**Card espansa** (click sulla card o sul marker):
+- Distribuzione stato civile con barra colorata
+- Heatmap penetrazione prodotti (7 pill con opacità variabile)
+- Metriche: costo vita, reddito mercato, % single, % famiglie
+- Mini-riepilogo gap ricavi (waterfall)
+- Pulsante **"Vedi N clienti →"** per accedere alla lista clienti
 
-### Vista clienti (drill-down)
-
-Accesso esclusivo tramite "Vedi N clienti →". Mostra:
+**Vista clienti** (aperta dal pulsante "Vedi N clienti →"):
 - 4 KPI: reddito medio, età media, % single, prodotti medi
-- Tabella clienti con ID, stato civile, età, reddito, chip prodotti
 - Ricerca per ID cliente
 - Ordinamento per età, reddito o ID
 - Max 200 righe visibili (nota "+ N altri" se eccede)
-- Bottone "← Città" per tornare alla lista
+- Pulsante **← Città** per tornare
 
-### Modal città (analisi approfondita)
+### Modal analisi città (pulsante ⊞)
+Click sul pulsante **⊞** in alto a destra di una card → apre un modal con 4 viste:
 
-Click sul titolo di una city card → apre un modal overlay con:
+| Vista | Contenuto |
+|-------|-----------|
+| **Prodotti** | Istogramma penetrazione % per prodotto |
+| **Redditività** | Istogramma ricavo medio mensile €/cliente per prodotto |
+| **⚠ Rischio** | Analisi rischio abbandono: distribuzione score, top clienti, fattori aggregati |
+| **Waterfall** | Gap di ricavo per prodotto: ricavi attuali vs potenziali |
 
-**Istogramma** — Canvas 2D con 7 barre (una per prodotto). Due viste:
-- **Prodotti** — penetrazione % (quanti clienti hanno quel prodotto)
-- **Redditività** — ricavo medio mensile per cliente in €
+Per le viste Prodotti e Redditività sono disponibili proiezioni temporali: **Attuale · +2 anni · +5 anni · +10 anni**. La proiezione usa catene di Markov calibrate sullo storico reale dei clienti (2021–2024).
 
-**Proiezioni temporali** — Bottoni: Attuale · +2 anni · +5 anni · +10 anni
+Quando si seleziona un anno futuro:
+- La barra colorata mostra il valore proiettato
+- La barra grigia trasparente mostra il valore attuale come riferimento
+- Il Δ in verde/rosso appare sopra ogni barra
+- Sotto il grafico compare la tabella differenze (Δ penetrazione % e Δ ricavo/cliente)
 
-Quando si seleziona un anno futuro, l'istogramma mostra:
-- Barra colorata = valore proiettato
-- Barra grigia trasparente = valore attuale (riferimento)
-- Label verde/rosso sopra ogni barra = Δ rispetto all'attuale
+In fondo al modal c'è una sezione **Strategia** (collassabile) con i top 3 prodotti prioritari e un piano d'azione condizionale.
 
-Sotto l'istogramma appare la **tabella differenze**: per ogni prodotto, Δ penetrazione (%) e Δ ricavo/cliente (€), con totale variazione ricavi mensili in testa.
+### Chat AI
 
-**Sezione strategia** (collassabile con click sull'header):
-- KPI: ricavo/cliente/mese, ricavo totale/mese, età e reddito medi
-- Top 3 opportunità cross-sell (ranking per potenziale economico)
-- Piano d'azione con raccomandazioni condizionali basate su penetrazione, reddito e fascia d'età
-
-### Chat AI (analisi in linguaggio naturale)
-
-Pannello chat integrato nel layout. Digita una domanda in italiano e ricevi:
+Pannello integrato nella colonna centrale. Si digita in italiano e si ottengono:
 - Risposta testuale con statistiche chiave
-- Highlight sulla mappa (marker colorati e ridimensionati)
-- Aggiornamento della lista con i risultati rilevanti
+- Marker sulla mappa ridisegnati e colorati per evidenziare i risultati
+- Lista aggiornata nel pannello destro
 
-**5 tipi di analisi riconosciuti automaticamente:**
+**7 tipi di analisi disponibili:**
 
-| Tipo | Esempio query | Cosa restituisce |
-|---|---|---|
-| Cross-sell | "Chi può ricevere proposta Mutuo?" | Candidati per città, correlazione % |
-| Proiezione | "Come cambia il portafoglio in 5 anni?" | Δ stato civile e prodotti con tassi Markov |
-| Gap | "Gap prodotti fascia 30-45 anni?" | Prodotti meno penetrati nel segmento, città impattate |
-| Demografico | "Differenze tra single e famiglie?" | Confronto KPI e penetrazione per segmento |
-| Cliente singolo | "Analizza cliente #42" | Profilo, opportunità cross-sell ordinate per correlazione |
+| Tipo | Esempio di query | Cosa restituisce |
+|------|-----------------|-----------------|
+| **Cross-sell** | "Chi può ricevere proposta Mutuo?" | Candidati per città con correlazione % |
+| **Churn** | "Clienti a rischio abbandono" | Score rischio per cliente su 4 fattori, top città |
+| **Revenue Waterfall** | "Gap di cattura ricavi per città" | Gap €/mese tra ricavi attuali e potenziali |
+| **Proiezione** | "Proiezione distribuzione 5 anni" | Evoluzione stato civile e prodotti con Markov |
+| **Gap prodotti** | "Gap prodotti fascia 30-45 anni" | Prodotti meno penetrati nel segmento vs media |
+| **Demografico** | "Confronto single e coppie in Nord Italia" | Confronto KPI e penetrazione tra segmenti |
+| **Cliente singolo** | "Analizza il cliente #42" | Profilo completo + opportunità cross-sell |
 
-In **modalità analisi**, i marker sulla mappa cambiano:
-- **Viola** — città con candidati cross-sell (dimensione ∝ numero candidati)
-- **Cyan** — città rilevanti per gap / demografico / proiezione
-- **Bianco** — città del cliente singolo analizzato
-- Città non rilevanti diventano grigie e ridotte
+In **modalità analisi** i marker cambiano aspetto:
+
+| Colore | Tipo analisi |
+|--------|-------------|
+| Viola `#a78bfa` | Cross-sell (dimensione ∝ candidati) |
+| Rosso/Arancione/Giallo | Churn (colore ∝ score medio di rischio) |
+| Cyan `#22d3c8` | Waterfall, Gap, Demografico, Proiezione |
+| Bianco con bordo cyan | Cliente singolo |
+
+Le città non rilevanti diventano grigie e ridotte.
+
+### Campagne
+
+Accessibile dalla sezione **Campagne** nella sidebar (collassabile):
+
+**Nuova Campagna** — form per creare una campagna email:
+- Periodo di validità (data inizio / fine)
+- Prodotto da promuovere (Carta di Credito, Mutuo, Investimento, Ass. Vita, Ass. Casa)
+- Destinatari: tutti i clienti, per regione, o per singola città
+- Tipo evento abbinato (Sport, Moda, Design, Food, Altro) + nome evento
+
+Cliccando **Mostra Anteprima** si apre un secondo modal con il riepilogo e il testo dell'email generato automaticamente, modificabile prima dell'invio.
+
+**Archivio Campagne** — lista di tutte le campagne inviate (salvate in localStorage) con filtri per data, prodotto, destinatari e genere. Ogni campagna ha un pulsante per vedere il dettaglio e uno per eliminarla.
+
+### Report
+
+Accessibile dalla sezione **Report** nella sidebar (collassabile):
+
+| Report | Contenuto |
+|--------|-----------|
+| **Analisi degli scostamenti** | Export XLSX con KPI per ogni città: clienti, reddito medio, penetrazione prodotti, ricavi |
+| **Analisi degli scostamenti - città** | Come sopra, ma con selezione manuale delle città da includere |
+| **Opinione generale dei clienti** | Export XLSX con dati di soddisfazione aggregati per prodotto |
+
+---
+
+## Dataset
+
+| File | Righe | Contenuto |
+|------|-------|-----------|
+| `data/city_profile.csv` | 30 | Indici socioeconomici per città (qualità vita, digital index, reddito mercato, costo vita) |
+| `data/customers.csv` | 10.000 | Anagrafica clienti (età, stato civile, reddito) |
+| `data/customers_with_city_id.csv` | 10.000 | Mapping cliente → città |
+| `data/customer_history.csv` | ~8.000 | Storico stato civile 2021–2024 (per proiezioni e churn) |
+| `data/product_holdings.csv` | 28.527 | Prodotti posseduti per cliente |
+
+I dati vengono caricati a runtime tramite `fetch()` dai file CSV. Un overlay di caricamento con barra di progresso è visibile durante l'inizializzazione.
+
+**Prodotti disponibili (indice 0–6):**
+`Conto Corrente · Carta Debito · Carta Credito · Mutuo · Investimenti · Assicurazione Vita · Assicurazione Casa`
 
 ---
 
@@ -105,66 +192,55 @@ In **modalità analisi**, i marker sulla mappa cambiano:
 ```
 banca-geo/
 ├── html/
-│   └── banca-geo_10.html      ← file da aprire
+│   └── banca-geo.html          ← file da aprire nel browser
 ├── data/
+│   ├── loader.js               ← carica CSV a runtime, costruisce CITIES/CUSTOMERS/HISTORY
 │   ├── revenues.js             ← calcolo ricavi mensili per cliente
-│   ├── customer_emails.js      ← template email per outreach
-│   ├── city_profile.csv        ← 30 città (sorgente dati)
-│   ├── customers.csv           ← 10.000 clienti
+│   ├── customer_emails.js      ← template email per prodotto
+│   ├── customer_satisfaction.js← dati soddisfazione per cliente
+│   ├── report_data.js          ← dati per export XLSX
+│   ├── city_profile.csv
+│   ├── customers.csv
 │   ├── customers_with_city_id.csv
-│   ├── customer_history.csv    ← storico stato civile 2021–2024
-│   └── product_holdings.csv    ← prodotti per cliente
+│   ├── customer_history.csv
+│   └── product_holdings.csv
 ├── engine/
-│   ├── correlation.js          ← funzioni statistiche base
+│   ├── correlation.js          ← funzioni statistiche (Pearson, profili simili)
 │   ├── extractors.js           ← NLP: estrazione entità dalla query
-│   ├── intent.js               ← classificazione intent (5 tipi)
-│   ├── crosssell.js            ← analisi candidati cross-sell
-│   ├── projection.js           ← proiezioni Markov
-│   ├── demographic.js          ← confronto segmenti
+│   ├── intent.js               ← classificazione intent (7 tipi)
+│   ├── crosssell.js            ← analisi candidati cross-sell (bucketing)
+│   ├── projection.js           ← proiezioni demografiche (Markov)
+│   ├── churn.js                ← scoring rischio abbandono
+│   ├── waterfall.js            ← gap di ricavo per prodotto
+│   ├── demographic.js          ← confronto segmenti demografici
 │   ├── gap.js                  ← gap penetrazione per fascia età
 │   ├── customer.js             ← analisi cliente singolo
-│   ├── response.js             ← generazione risposta + azioni UI
-│   ├── mail.js                 ← template email per prodotto
-│   └── engine.js               ← dispatcher sendChat, stato analisi
+│   ├── response.js             ← generazione risposta testuale + azioni UI
+│   ├── mail.js                 ← template email per campagne
+│   └── engine.js               ← dispatcher sendChat, stato analysisMode
 └── ui/
-    ├── map.js                  ← Leaflet, marker, vista analisi
-    ├── panel.js                ← aggregazione, lista città/clienti
-    ├── citymodal.js            ← modal: istogrammi, proiezioni, strategia
-    └── chat.js                 ← UI chat, input, rendering
+    ├── map.js                  ← Leaflet, marker, modalità analisi
+    ├── panel.js                ← aggregazione, lista città/clienti, pannello AI
+    ├── citymodal.js            ← modal ⊞: istogrammi, churn, waterfall, proiezioni, strategia
+    ├── chat.js                 ← UI chat, suggerimenti, toggle, reset
+    └── report.js               ← export XLSX, selezione città, report opinioni
 ```
-
-I dati (CITIES, CUSTOMERS, HISTORY) sono embedded come costanti JavaScript direttamente in `banca-geo_10.html`. Gli script in `engine/` e `ui/` sono caricati come file separati tramite tag `<script src="...">`.
 
 ---
 
 ## Dipendenze esterne
 
 | Libreria | Versione | Scopo |
-|---|---|---|
-| Leaflet | 1.9.4 | Mappa interattiva |
-| CartoDB Dark Matter | — | Tile mappa scura (no API key) |
+|----------|----------|-------|
+| Leaflet | 1.9.4 | Mappa interattiva (CDN unpkg) |
+| CartoDB Dark Matter | — | Tile mappa scura, senza API key |
 | Google Fonts | — | DM Mono, Instrument Serif, Sora |
 
 Nessun framework JavaScript. Nessun build step. Vanilla JS puro.
 
 ---
 
-## Documentazione tecnica
+## Sviluppo
 
-`CLAUDE.md` contiene la documentazione completa per riprodurre o estendere il progetto:
-
-- Sezioni 1–10: architettura di `banca-geo_3.html` (base del sistema)
-- Sezioni 11–22: tutto ciò che è stato aggiunto in `banca-geo_10.html`
-  - Struttura file e ordine di inclusione script
-  - Formato HISTORY e formule revenues.js
-  - Implementazione istogrammi Canvas 2D
-  - Logica proiezioni Markov (formule complete)
-  - Engine AI: flusso detectIntent, queryCrossSell, queryProjection
-  - Istruzioni passo per passo per ricreare da zero
-  - Checklist di verifica
-
----
-
-## Autore
-
-Progetto sviluppato con Claude — Anthropic.
+Progetto sviluppato con [Claude](https://claude.ai) — Anthropic.  
+Documentazione tecnica completa per riprodurre o estendere il progetto: [`CLAUDE.md`](CLAUDE.md).
